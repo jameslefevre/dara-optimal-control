@@ -1,17 +1,17 @@
 % Blocks of code in this script control runs of the optimal control algorithm. 
 % Parameters are customised, the initial state determined, and
-% the bang-bang or continuous optimal control function is called.
+% the linear or quadratic cost control function is called.
 % The parameter saveString controls the folder and filenames where results
 % are stored. 
 % Loops are not included here but are advised when running multiple parameter combinations.
 
 
-% example: continuous and bang-bang convergence for full default model
+%% example: quadratic and linear-cost convergence for full default model
 
 clear
 params = getparams();
 params("omega") = 0.9;
-params("saveString") = "v0_cont_w9";
+params("saveString") = "v0_quad_w9";
 APN_vals = steadystates_dara_immune(params,0,1e-24); 
 params('A_init') = APN_vals{end,'A'};
 params('P_init') = APN_vals{end,'P'};
@@ -24,7 +24,7 @@ params("iterationsPlot") = [10,50,100,150,200,400,600,800,1000];
 [t_y,y,U,iterations,converged,ConvergenceStats] = contcontrol_dara_immune(params);
 disp(ConvergenceStats{end,'Cost'})
 
-
+% bang-singular
 clear
 params = getparams();
 params("omega") = 0.02;
@@ -41,7 +41,7 @@ params("iterationsPlot") = [10,100,1000,5000,10000,20000,30000,50000];
 [t_y,y,U,iterations,converged,ConvergenceStats] = bbcontrol_dara_immune(params);
 disp(ConvergenceStats{end,'Cost'})
 
-% example: continuous and bang-bang convergence for null-N model 
+%% example: quadratic and linear-cost convergence for null-N model 
 % (control model without drug escape and off-target effect)
 
 clear
@@ -56,7 +56,7 @@ params("mau") = 0.0; %0.5; %Additional exit of A per unit of control; this disab
 params("dpu") = 0.0; %1.0; %Additional loss of CD38 expression in P per unit of control; this disables loss of CD38 expression due to drug
 
 params("omega") = 0.9;
-params("saveString") = "nullN_cont_w9";
+params("saveString") = "nullN_quad_w9";
 APN_vals = steadystates_dara_immune(params,0,1e-24); 
 params('A_init') = APN_vals{end,'A'};
 params('P_init') = APN_vals{end,'P'};
@@ -69,7 +69,7 @@ params("iterationsPlot") = [10,50,100,150,200,400,600,800,1000];
 [t_y,y,U,iterations,converged,ConvergenceStats] = contcontrol_dara_immune(params);
 disp(ConvergenceStats{end,'Cost'})
 
-
+% bang-bang
 clear
 params = getparams();
 params("pp") = 0.27; %Slightly reduced proliferation of P
@@ -97,7 +97,8 @@ disp(ConvergenceStats{end,'Cost'})
 
 
 
-% example: simple bang-bang convergence case
+%% example: simple linear-cost convergence case
+% bang-bang 
 
 clear
 params = getparams();
@@ -120,7 +121,8 @@ params("iterationsPlot") = [10,100,1000,5000,10000];
 [t_y,y,U,iterations,converged,ConvergenceStats] = bbcontrol_dara_immune(params);
 disp(ConvergenceStats{end,'Cost'})
 
-% example: intermediate bang-bang convergence case (note reduced omega)
+%% example: intermediate linear-cost convergence case (note reduced omega)
+% bang-singular with break
 
 clear
 params = getparams();
@@ -143,7 +145,8 @@ params("iterationsPlot") = [10,100,1000,5000,10000,15000,20000];
 [t_y,y,U,iterations,converged,ConvergenceStats] = bbcontrol_dara_immune(params);
 disp(ConvergenceStats{end,'Cost'})
 
-% example: one of the most difficult bang-bang convergence cases 
+% example: one of the most difficult linear-cost convergence cases 
+% indefinite cycling bang-bang
 
 clear
 params = getparams();
@@ -168,9 +171,9 @@ disp(ConvergenceStats{end,'Cost'})
 
 
 
-% example: continuing an optimal control calculation
+%% example: continuing an optimal control calculation
 
-% Continue the bang-bang convergence calculation for default model. 
+% Continue the linear-cost convergence calculation for default model. 
 % This code requires the original calculation to be run so that the result
 % at t=10000 is available to be reloaded and continued.
 % This case is fully converged, but code is designed for complex cases
@@ -200,6 +203,66 @@ disp(ConvergenceStats{end,'Cost'})
 
 
 
+%%  example: default model with cancer cost term weight reduced by factor of 2
+% quadratic
+clear
+
+params = getparams();
+params("a2") = 0.5;
+params("omega") = 0.9;
+a2str = "pt5";
+params("saveString") = join(["v0_a2_",a2str,"_quad_w9"],"");
+APN_vals = steadystates_dara_immune(params,0,1e-24); 
+params('A_init') = APN_vals{end,'A'};
+params('P_init') = APN_vals{end,'P'};
+params('N_init') = APN_vals{end,'N'};
+
+params("MaxIters") = 1000;
+params("MinIters") = 200;
+params("iterationsPlot") = [10,50,100,150,200,400,600,800,1000];
+
+[t_y,y,U,iterations,converged,ConvergenceStats] = contcontrol_dara_immune(params);
+disp(ConvergenceStats{end,'Cost'})
 
 
+% linear
+clear
+params = getparams();
+params("a2") = 0.5;
+params("omega") = 0.02;
+a2str = "pt5";
+params("saveString") = join(["v0_a2_",a2str,"_w02"],"");
+APN_vals = steadystates_dara_immune(params,0,1e-24); 
+params('A_init') = APN_vals{end,'A'};
+params('P_init') = APN_vals{end,'P'};
+params('N_init') = APN_vals{end,'N'};
 
+params("MaxIters") = 100000;
+params("MinIters") = 10000;
+params("iterationsPlot") = [10,100,1000,5000,10000,20000,30000,50000];
+
+[t_y,y,U,iterations,converged,ConvergenceStats] = bbcontrol_dara_immune(params);
+disp(ConvergenceStats{end,'Cost'})
+
+
+%%  example: default model with general cost function u+P+N+kappa(u^2+(P+N)^2)
+clear
+kappa =  1; % [0.2,0.1]
+params = getparams();
+params("omega") = 0.95; % 0.99 for kappa=0.1
+kappastr = kappa+"";
+%if kappa<1
+%    kappastr = "pt" + 10*kappa;
+%end
+params("saveString") = join(["v0_kappa_",kappastr,"_gen_w"+(100*params("omega"))],"");
+APN_vals = steadystates_dara_immune(params,0,1e-24); 
+params('A_init') = APN_vals{end,'A'};
+params('P_init') = APN_vals{end,'P'};
+params('N_init') = APN_vals{end,'N'};
+
+params("MaxIters") = 5000;
+params("MinIters") = 1000;
+params("iterationsPlot") = [10,50,100,150,200,400,600,800,1000,2000,3000,4000,5000];
+
+[t_y,y,U,iterations,converged,ConvergenceStats] = generalcontrol_dara_immune(params,kappa);
+disp(ConvergenceStats{end,'Cost'})

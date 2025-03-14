@@ -1,9 +1,8 @@
 function [t_y,y,U,iterations,converged,ConvergenceStats] = contcontrol_dara_immune(params)
-%contcontrol_dara_immune Calculates the optimal continuous control for the
+%contcontrol_dara_immune Calculates the quadratic-cost continuous control for the
 % Darra/MM model with immune response
 %   Uses iterative back/forward sweep method with state/costate solving
 %   2-point BVP. 
-%  Adapted from Sharpe2019 model
 
 % export parameters from params map to local namespace
 for key = params.keys()
@@ -18,7 +17,7 @@ if ~isfolder(saveString)
 end
 
 % initialise
-% have not implemented U_init stuff here; used in bb to allow resumptions
+% have not implemented U_init stuff here; used in bbcontrol_dara_immune to allow resumptions
 y(:,1) = [A_init,P_init,N_init];
 
 U = zeros(1,Nt);
@@ -91,11 +90,11 @@ fprintf('Sum U^2,(P+N)^2,cost: %d,%d,%d;  ',sumU2,sumPN2,a1*sumU2+a2*sumPN2)
 fprintf('Iters: %d  \n',iterations) 
 
 if ismember(iterations,iterationsPlot)
-     plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
+     fig = plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
            {t_y,y,U,false, append(saveString,", ",num2str(iterations)),true}));
-     saveas(gcf,append(saveString,"/",saveString,'_',num2str(iterations),'.fig') );
-     saveas(gcf,append(saveString,"/",saveString,'_',num2str(iterations),'.png') );
-     close(gcf);
+     saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'.fig') );
+     saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'.png') );
+     close(fig);
 end
 
 uold =  U; %Store control from previous iteration
@@ -120,10 +119,10 @@ end
 
 % final sequence: save final plot, stats, convergence plot 
 
-plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
+fig = plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
            {t_y,y,U,false, append(saveString,", ",num2str(iterations)),true}));
-saveas(gcf,append(saveString,"/",saveString,'_',num2str(iterations),'_fin.fig') );
-close(gcf);
+saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'_fin.fig') );
+close(fig);
 
 Cost = a1 .* SumU2 + a2 .* SumPN2;
 
@@ -133,11 +132,12 @@ writetable(ConvergenceStats,append(saveString,"/",saveString,"_stats.csv"));
 colours = [ 
     0/255  114/255  189/255
     222/255  125/255  0/255 
-]; %Define colours for plot
+]; % Define colours for convergence plot
 
 iters = 1:length(Cost);
-figure('Name',append(saveString," convergence") );
-set(gca, 'ColorOrder', colours);
+fig = figure('Name',append(saveString," convergence") );
+ax = axes('Parent', fig);
+set(ax, 'ColorOrder', colours);
 hold on
 box on
 grid on
@@ -146,9 +146,9 @@ line2 = plot(iters,RelativeTolerance,'LineWidth',2);
 legend([line1,line2],{'Cost','RelativeTolerance'},'Location','northeast');
 xlabel('Iterations','fontsize',18);
 %axis([0,t_y(end),0,1]) % axis([0,Tfinal,0,1])
-%xt = get(gca, 'XTick');
-set(gca, 'FontSize', 18)
-saveas(gcf,append(saveString,"/",saveString,'_convergence.fig') );
-saveas(gcf,append(saveString,"/",saveString,'_convergence.png') );
-close(gcf);
+%xt = get(ax, 'XTick');
+set(ax, 'FontSize', 18)
+saveas(fig,append(saveString,"/",saveString,'_convergence.fig') );
+saveas(fig,append(saveString,"/",saveString,'_convergence.png') );
+close(fig);
 

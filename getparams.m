@@ -18,10 +18,10 @@ params("pa") = 0.43; %Proliferation of A
 params("ma") = 0.44; %Exit of A
 params("pp") = 0.28; %Proliferation of P
 params("mp") = 0.048; %Exit of P
-params("dp") = 0.003; %0.02; %Loss of CD38 expression in P
-params("pn") = 0.15; %0.23; %Proliferation of N
-params("mn") = 0.06; %0.055; %Exit of N
-params("dn") = 0.03; % 0.1; in test %Gain of CD38 expression in N
+params("dp") = 0.003; %Loss of CD38 expression in P
+params("pn") = 0.15; %Proliferation of N
+params("mn") = 0.06; %Exit of N
+params("dn") = 0.03; %Gain of CD38 expression in N
 
 params("alpha_") = 0.015; % immune response rate ; values from Sharp20019
 params("gamma_") = 0.1; % half saturation constant of immune response % table 1 says 0.01, fig 4 says 0.1

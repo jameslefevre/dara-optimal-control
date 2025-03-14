@@ -7,6 +7,19 @@ function [APN_vals,C_bound,Cc] = steadystates_dara_immune(params,controlLevel,to
 % (If the coexist SS exists with immune response, then it exists without)
 % Any coexist SS is then run through simulation until change is <tol in all
 % 3 state variables
+% Possible results (if assumptions hold):
+% 1. output table has single row, with P=N=0, A>0; this gives the sole
+%   equilibrium, which is stable; this is identical with or without the
+%   immune response.
+% 2. Output table has two rows, both with P=N=0, A>0 (second row might
+%   differ very slightly). This gives the sole equilibrium, which is 
+%   stable; but in this case the zero immune case is differenet with two 
+%   equilibria, the stable one having P,N>0.
+% 3. Output table has two rows, first with P=N=0 and second with P,N>0.
+%   The second is a stable equilibrium for the full system (with immune).
+%   The first row is an equilibrium for the full system. It is an unstable
+%   equilibrium for the no-immune system, but stability is unknown for the 
+%   full system, and would need to be checked.
 
 % export parameters from params map to local namespace
 for key = params.keys()
@@ -47,7 +60,7 @@ if Cc<C_bound
     PNsum=1-Cc-A;
     fN=dp;
     fP=dn+mn-pn*Cc;
-    y = [A,PNsum*fP/(fP+fN),PNsum*fN/(fP+fN)];
+    y = [A;PNsum*fP/(fP+fN);PNsum*fN/(fP+fN)];
     for dummy = 1:1e6
         k1 = State(y,0);
         k2 = State(y+dt*k1/2,0);

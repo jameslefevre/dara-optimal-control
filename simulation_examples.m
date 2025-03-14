@@ -2,7 +2,7 @@
 
 
 % first example: default and null-N models with and without immune response
-% no control, t=50
+% no control
 
 clear
 colours = [ 
@@ -14,7 +14,7 @@ colours = [
 for noImmune = [false,true]
     for nullN = [false,true]
         params = getparams();     
-        params("Tfinal") = 50;
+        params("Tfinal") = 150;
         if noImmune
             params("alpha_") = 0.0;
             nm = "simulation_noImmune";
@@ -60,8 +60,9 @@ for noImmune = [false,true]
             y(:,i+1) = y(:,i) + (dt/6)*(k1+2*k2+2*k3+k4);
         end
 
-        figure
-        set(gca, 'ColorOrder', colours);
+        fig = figure;
+        ax = axes('Parent', fig);
+        set(ax, 'ColorOrder', colours);
         hold on
         box on
         line1 = plot(t_y,y(1,:),'LineWidth',2);
@@ -71,12 +72,13 @@ for noImmune = [false,true]
         ylabel('State','fontsize',18);
         xlabel('Time','fontsize',18);
         axis([0,Tfinal,0,1])
-        xt = get(gca, 'XTick');
-        set(gca, 'FontSize', 18)
-        set(gcf, 'Position',  [100, 100, 400, 480]);
+        xt = get(ax, 'XTick');
+        set(ax, 'FontSize', 18);
+        set(fig, 'Position',  [100, 100, 400, 480]);
 
-        saveas(gcf,append(nm,'.png') );
-        close(gcf);
+        saveas(fig,append(nm,'.png') );
+        % saveas(fig,append(nm,'.svg') ); % for incorporation into vector figure
+        close(fig);
 
     end
 end
@@ -147,8 +149,9 @@ for controlCase = [0,1]
             y(:,i+1) = y(:,i) + (dt/6)*(k1+2*k2+2*k3+k4);
         end
 
-        figure
-        set(gca, 'ColorOrder', colours);
+        fig = figure;
+        ax = axes('Parent', fig);
+        set(ax, 'ColorOrder', colours);
         hold on
         box on
         line1 = plot(t_y,y(1,:),'LineWidth',2);
@@ -159,12 +162,12 @@ for controlCase = [0,1]
         ylabel('State','fontsize',18);
         xlabel('Time','fontsize',18);
         axis([0,Tfinal,0,1])
-        xt = get(gca, 'XTick');
-        set(gca, 'FontSize', 18)
-        set(gcf, 'Position',  [100, 100, 400, 480]);
+        xt = get(ax, 'XTick');
+        set(ax, 'FontSize', 18)
+        set(fig, 'Position',  [100, 100, 400, 480]);
 
-        saveas(gcf,append(nm,'.png') );
-        close(gcf);
+        saveas(fig,append(nm,'.png') );
+        close(fig);
 
     end
 end

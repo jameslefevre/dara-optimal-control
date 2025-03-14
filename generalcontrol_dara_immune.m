@@ -1,6 +1,9 @@
-function [t_y,y,U,iterations,converged,ConvergenceStats,psi] = bbcontrol_dara_immune(params)
-%bbcontrol_dara_immune Calculates the optimal linear-cost control for the
-% Darra/MM model with immune response
+function [t_y,y,U,iterations,converged,ConvergenceStats] = generalcontrol_dara_immune(params,kappa)
+%generalcontrol_dara_immune Calculates the optimal control for the
+% Darra/MM model with immune response, and cost function
+% u+P+N+kappa(u^2+(P+N)^2)
+% The control u is constrained by the bounds Ulower, Uupper given in params
+
 %   Uses iterative back/forward sweep method with state/costate solving
 %   2-point BVP. 
 
@@ -16,31 +19,22 @@ if ~isfolder(saveString)
     mkdir(saveString);
 end
 
-%initialise
+% initialise
+% have not implemented U_init stuff here; used in bbcontrol_dara_immune to allow resumptions
 y(:,1) = [A_init,P_init,N_init];
 
-if length(U_init)==1
-    U = U_init*ones(1,Nt);
-elseif length(U_init)==Nt
-    U = U_init;
-else
-    disp("!!! U_init has incorrect length")
-    disp(length(U_init))
-    return
-end
-
+U = zeros(1,Nt);
 uold =  U;
-uold1000 =  U; % for checking convergence
-iterations = iteration_init; %in case we want to resume an interrupted optimal control fit 
+iterations = 0; %initialise iteration count
 converged = false;
 RelTolTest = 0;
-RelTolTest1000 = -1; 
 %Initialise vectors to monitor convergence
 RelativeTolerance = []; 
-RelativeTolerance1000 = []; 
 SumU = [];
 SumPN = [];
- 
+SumU2 = [];
+SumPN2 = [];
+
 %State equations
 State = @(t,y,U) [(ba+pa*y(1)*(1-y(1)-y(2)-y(3))-ma*y(1)-mau*U*y(1)); 
     (pp*y(2)*(1-y(1)-y(2)-y(3)) -dp*y(2) +dn*y(3) -dpu*U*y(2) -mp*y(2)-mpu*U*y(2) - alpha_*y(2)/(gamma_ + y(2)+y(3)) ); 
@@ -48,8 +42,8 @@ State = @(t,y,U) [(ba+pa*y(1)*(1-y(1)-y(2)-y(3))-ma*y(1)-mau*U*y(1));
 
 %Costate equations ; a2 term in part 2 and 3 is cost function contribution
 Costate = @(t,Lambda,y,U) [Lambda(1)*(-pa*(1-2*y(1)-y(2)-y(3))+ma+mau*U) + Lambda(2)*pp*y(2) + Lambda(3)*pn*y(3);
-	-a2  + Lambda(1)*pa*y(1) + Lambda(3)*(pn*y(3)-dp-dpu*U-alpha_*y(3)/(gamma_+y(2)+y(3))^2 ) + Lambda(2)*(-pp*(1-y(1)-2*y(2)-y(3))+dp+dpu*U+mp+mpu*U + alpha_*(gamma_+y(3))/(gamma_+y(2)+y(3))^2 );
-	-a2 + Lambda(1)*pa*y(1) + Lambda(2)*(pp*y(2)-dn-alpha_*y(2)/(gamma_+y(2)+y(3))^2) + Lambda(3)*(-pn*(1-y(1)-y(2)-2*y(3))+dn+mn+ alpha_*(gamma_+y(2))/(gamma_+y(2)+y(3))^2)]; 
+	-1-2*kappa*(y(2)+y(3))*a2  + Lambda(1)*pa*y(1) + Lambda(3)*(pn*y(3)-dp-dpu*U-alpha_*y(3)/(gamma_+y(2)+y(3))^2 ) + Lambda(2)*(-pp*(1-y(1)-2*y(2)-y(3))+dp+dpu*U+mp+mpu*U + alpha_*(gamma_+y(3))/(gamma_+y(2)+y(3))^2 );
+	-1-2*kappa*(y(2)+y(3))*a2 + Lambda(1)*pa*y(1) + Lambda(2)*(pp*y(2)-dn-alpha_*y(2)/(gamma_+y(2)+y(3))^2) + Lambda(3)*(-pn*(1-y(1)-y(2)-2*y(3))+dn+mn+ alpha_*(gamma_+y(2))/(gamma_+y(2)+y(3))^2)]; 
 
 % Forward-backward sweep
 while(iterations<MaxIters)
@@ -85,30 +79,28 @@ while j > 1
     Lambda(:,j) = Lambda(:,j+1) - (dt/6)*(k1+2*k2+2*k3+k4);
 end
 
-% calculate psi for updated state and costate (all based on u from previous
-% iteration)
-psi = a1-Lambda(1,:).*mau.*y(1,:) -Lambda(2,:).*dpu.*y(2,:) -Lambda(2,:).*mpu.*y(2,:) + Lambda(3,:).*dpu.*y(2,:);
-
 % record all stats / print results here, before updating U
 % except for RelativeTolerance, which is recorded to the stats after U update
 
 sumU = sum(U)*dt;
 sumPN = sum(y(2,:)+y(3,:))*dt;
-SumU = [SumU ;  sumU];
+sumU2 = sum(U.^2)*dt;
+sumPN2 = sum((y(2,:)+y(3,:)).^2)*dt;
+SumU = [SumU ; sumU];
 SumPN = [SumPN ; sumPN];
+SumU2 = [SumU2 ; sumU2];
+SumPN2 = [SumPN2 ; sumPN2];
 
 
 %Update and display iteration count
 iterations = iterations+1;
 fprintf('Rel tol: %d  ;  ',RelTolTest) 
-fprintf('Rel tol 1000: %d  ;  ',RelTolTest1000) 
-fprintf('Sum U,P+N,cost: %d,%d,%d;  ',sumU,sumPN,a1*sumU+a2*sumPN)
+fprintf('Sum U^2,(P+N)^2,cost: %d,%d,%d;  ',sumU2,sumPN2,a1*sumU2+a2*sumPN2)
 fprintf('Iters: %d  \n',iterations) 
 
 if ismember(iterations,iterationsPlot)
-    fig = plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
+     fig = plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
            {t_y,y,U,false, append(saveString,", ",num2str(iterations)),true}));
-
      saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'.fig') );
      saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'.png') );
      close(fig);
@@ -116,25 +108,15 @@ end
 
 uold =  U; %Store control from previous iteration
 
-% original update method from Sharp2019
-% Uupdate = max(Uupper*((sign(psi)-1)/(-2)), Ulower*((sign(psi)+1)/(2)));
-% U = omega*U + (1-omega)*Uupdate; 
-
-% modified update method
-U = min(max(U - omega*psi,Ulower),Uupper);
+Uupdate = ( Lambda(1,:).*mau.*y(1,:) +Lambda(2,:).*dpu.*y(2,:) +Lambda(2,:).*mpu.*y(2,:) - Lambda(3,:).*dpu.*y(2,:) - 1) ./ (2*a1*kappa);
+U = omega*U + (1-omega)*Uupdate;
+U = min(max(U,Ulower),Uupper);
 
 %Check for convergence
-RelTolTest = RelTol*norm(U) - norm(U-uold); % positive means converged within tolerance
+RelTolTest = RelTol*norm(U) - norm(U-uold);
 RelativeTolerance = [RelativeTolerance ; RelTolTest];
 
-% additional check over 1000 time steps
-if (mod(iterations,1000) == 0)
-    RelTolTest1000 = RelTol1000*norm(U) - norm(U-uold1000);
-    uold1000=U;
-end
-RelativeTolerance1000 = [RelativeTolerance1000 ; RelTolTest1000];
-
-if (iterations>MinIters && RelTolTest > 0 && RelTolTest1000 > 0) 
+if (iterations>MinIters && RelTolTest > 0) 
     fprintf('Specified relative tolerance of %g has been met \n\r',RelTol)
     converged = true;
     break
@@ -143,15 +125,16 @@ end
 end
 
 % final sequence: save final plot, stats, convergence plot 
+
 fig = plot_optimal_control_and_variables_over_time(containers.Map({'t_y','y','U','plotPNsum','saveName','includeLegend'},...
            {t_y,y,U,false, append(saveString,", ",num2str(iterations)),true}));
 saveas(fig,append(saveString,"/",saveString,'_',num2str(iterations),'_fin.fig') );
 close(fig);
 
-Cost = a1 .* SumU + a2 .* SumPN;
-ConvergenceStats = table(SumU,SumPN,Cost,RelativeTolerance,RelativeTolerance1000);
-writetable(ConvergenceStats,append(saveString,"/",saveString,"_stats.csv"));
+Cost = a1 .* SumU + a2 .* SumPN + kappa .* a1 .* SumU2 + kappa .* a2 .* SumPN2;
 
+ConvergenceStats = table(SumU,SumPN,SumU2,SumPN2,Cost,RelativeTolerance);
+writetable(ConvergenceStats,append(saveString,"/",saveString,"_stats.csv"));
 
 colours = [ 
     0/255  114/255  189/255
@@ -169,7 +152,9 @@ line1 = plot(iters,Cost,'LineWidth',2);
 line2 = plot(iters,RelativeTolerance,'LineWidth',2);
 legend([line1,line2],{'Cost','RelativeTolerance'},'Location','northeast');
 xlabel('Iterations','fontsize',18);
-set(ax, 'FontSize', 18);
+%axis([0,t_y(end),0,1]) % axis([0,Tfinal,0,1])
+%xt = get(ax, 'XTick');
+set(ax, 'FontSize', 18)
 saveas(fig,append(saveString,"/",saveString,'_convergence.fig') );
 saveas(fig,append(saveString,"/",saveString,'_convergence.png') );
 close(fig);
